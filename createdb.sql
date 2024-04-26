@@ -24,15 +24,20 @@ insert into category (codename, name, is_base_expense, aliases)
 values
     ("products", "продукты", true, "еда, магазин, магаз"),
     ("beer", "пивко", true, "пиво, пивас, пивасик"),
+    ("alcohol", "алкоголь", false, "алко, алкашка"),
     ("coffee", "кофе", true, ""),
-    ("dinner", "обед", true, "столовая, ланч, пицца"),
-    ("cafe", "кафе", true, "ресторан, рест, мак, макдак, kfc"),
-    ("transport", "общ. транспорт", false, "метро, автобус, metro"),
+    ("cafe", "кафе", true, "ресторан, обед, мак, макдак, kfc, пицца"),
+    ("transport", "общ. транспорт", true, "метро, автобус, metro"),
     ("taxi", "такси", false, ""),
-    ("phone", "телефон", false, "velcom"),
-    ("books", "книги", false, "литература, литра, лит-ра"),
-    ("internet", "интернет", false, "инет, inet"),
-    ("subscriptions", "подписки", false, "подписка"),
+    ("internet", "телефон и интернет", false, "инет, inet, velcom, телефон"),
+    ("rent", "аренда квартиры", false, "аренда, квартира"),
+    ("komunalka", "коммунальные расходы", false, "коммуналка"),
+    ("dress", "одежда", false, "одежда, обувь"),
+    ("beauty", "красота", false, "косметика, ногти, стрижка, маникюр, педикюр"),
+    ("health", "здоровье", true, "аптека, лекарства, мед услуги"),
+    ("household", "бытовые расходы", true, "мила, посуда"),
+    ("entertainment", "развлечения", false, "кино, театр"),
+    ("reserve", "резерв", true, "отложено"),
     ("other", "прочее", true, "");
 
 insert into budget(codename, daily_limit) values ('base', 170);
