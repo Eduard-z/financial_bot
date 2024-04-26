@@ -24,6 +24,7 @@ def delete(table: str, column_values: Dict):
         f"delete from {table} "
         f"where amount='{column_values['amount']}' "
         f"AND category_codename='{column_values['category_codename']}' "
+        f"AND user_id='{column_values['user_id']}' "
         f"AND id in (select id from {table} "
         f"where amount='{column_values['amount']}' "
         f"AND category_codename='{column_values['category_codename']}' "

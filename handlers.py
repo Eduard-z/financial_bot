@@ -30,8 +30,8 @@ async def menu(msg: Message):
 async def menu_handler(message: types.Message):
     await message.answer(
         "Бот для учёта финансов\n\n"
-        "Добавить расход: 25 такси\n"
-        "Удалить расход: -25 такси\n"
+        "Добавить расход: 12.5 такси\n"
+        "Удалить расход: -12.5 такси\n"
         "Сегодняшняя статистика: /today\n"
         "За текущий месяц: /month\n"
         "Последние внесённые расходы: /expenses\n"
@@ -43,29 +43,46 @@ async def menu_handler(message: types.Message):
 async def categories_list(message: types.Message):
     """Отправляет список категорий расходов"""
     categories = Categories().get_all_categories()
+
+    def is_basic(is_base: bool):
+        if is_base:
+            return "[баз.]"
+        else:
+            return ""
+
     answer_message = "Категории трат:\n\n* " +\
-        ("\n* ".join([c.name+' ('+", ".join(c.aliases)+')' for c in categories]))
+        ("\n* ".join([c.name + ' ' + is_basic(c.is_base_expense) +
+         ' (' + ", ".join(c.aliases)+')' for c in categories]))
     await message.answer(answer_message)
 
 
 @router.message(Command("today"))
 async def today_statistics(message: types.Message):
     """Отправляет сегодняшнюю статистику трат"""
-    answer_message = expenses.get_today_statistics()
+    answer_message = expenses.get_today_statistics(message.from_user.id)
     await message.answer(answer_message)
 
 
 @router.message(Command("month"))
 async def month_statistics(message: types.Message):
     """Отправляет статистику трат текущего месяца"""
-    answer_message = expenses.get_month_statistics()
+    month_expenses = expenses.get_month_statistics(message.from_user.id)
+    if not month_expenses:
+        await message.answer("Расходы ещё не заведены")
+        return
+
+    month_expenses_rows = [
+        f"{expense.amount} руб. на {expense.category_name}"
+        for expense in month_expenses]
+    answer_message = "Траты за месяц:\n\n* " + "\n\n* "\
+        .join(month_expenses_rows)
     await message.answer(answer_message)
 
 
 @router.message(Command("expenses"))
 async def list_expenses(message: types.Message):
     """Отправляет последние несколько записей о расходах"""
-    last_expenses = expenses.last()
+    last_expenses = expenses.last(message.from_user.id)
     if not last_expenses:
         await message.answer("Расходы ещё не заведены")
         return
@@ -93,13 +110,13 @@ async def hui_special(message: types.Message):
 async def del_expense(message: types.Message):
     """Удаляет одну запись о расходе по её сумме и категории"""
     try:
-        expense = expenses.delete_expense(message.text)
+        expense = expenses.delete_expense(message.text, message.from_user.id)
     except exceptions.NotCorrectMessage as e:
         await message.answer(str(e))
         return
     answer_message = (
         f"Удалены траты {expense.amount} руб на {expense.category_name}.\n\n"
-        f"{expenses.get_today_statistics()}")
+        f"{expenses.get_today_statistics(message.from_user.id)}")
     await message.answer(answer_message)
 
 
@@ -113,5 +130,5 @@ async def add_expense(message: types.Message):
         return
     answer_message = (
         f"Добавлены траты {expense.amount} руб на {expense.category_name}.\n\n"
-        f"{expenses.get_today_statistics()}")
+        f"{expenses.get_today_statistics(message.from_user.id)}")
     await message.answer(answer_message)
