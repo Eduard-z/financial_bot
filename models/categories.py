@@ -1,7 +1,7 @@
 """Работа с категориями расходов"""
 from typing import Dict, List, NamedTuple
 
-import db
+from .db import fetchall
 
 
 class Category(NamedTuple):
@@ -18,7 +18,7 @@ class Categories:
 
     def _load_categories(self) -> List[Category]:
         """Возвращает справочник категорий расходов из БД"""
-        categories = db.fetchall(
+        categories = fetchall(
             "category", "codename name is_base_expense aliases".split()
         )
         categories = self._fill_aliases(categories)
@@ -55,7 +55,7 @@ class Categories:
             if category.codename == "other":
                 other_category = category
             for alias in category.aliases:
-                if category_name in alias:
+                if category_name == alias:
                     finded = category
         if not finded:
             finded = other_category

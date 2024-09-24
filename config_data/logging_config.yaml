@@ -1,0 +1,57 @@
+version: 1
+disable_existing_loggers: False
+
+formatters:
+  default:
+    format: '#%(levelname)-8s [%(asctime)s] - %(filename)s : %(funcName)s : %(lineno)d - %(message)s'
+
+  formatter_1:
+    format: '[{asctime}] {levelname:8} [{filename}.{funcName}:{lineno}] {message}'
+    datefmt: '%a, %d %b %Y %H:%M:%S'
+    style: '{'
+
+  formatter_2:
+    format: '#%(levelname)-8s %(funcName)s:%(lineno)d - %(message)s'
+
+filters:
+  error_filter:
+    (): config_data.log_filters.ErrorLogFilter
+
+  debug_warning_filter:
+    (): config_data.log_filters.DebugWarningLogFilter
+
+handlers:
+  default:
+    class: logging.StreamHandler
+    level: CRITICAL
+    formatter: default
+
+  stderr:
+    class: logging.StreamHandler
+    formatter: default
+    filters: [error_filter]
+    stream: ext://sys.stderr
+
+  stdout:
+    class: logging.StreamHandler
+    formatter: formatter_2
+    filters: [debug_warning_filter]
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.handlers.RotatingFileHandler
+    filename: artefacts/my_log.log
+    mode: a
+    encoding: utf-8
+    maxBytes: 1024000
+    backupCount: 3
+    formatter: formatter_1
+    level: DEBUG
+
+loggers:
+  __main__:
+    handlers: [file, stdout, stderr]
+
+root:
+  formatter: default
+  handlers: [default]

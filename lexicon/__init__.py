@@ -1,0 +1,1 @@
+from .text import LEXICON_RU, LEXICON_COMMANDS_RU

@@ -29,9 +29,26 @@ def delete(table: str, column_values: Dict):
         f"AND id in (select id from {table} "
         f"where amount='{column_values['amount']}' "
         f"AND category_codename='{column_values['category_codename']}' "
-        "limit 1)"
+        "order by id DESC limit 1)"
     )
     conn.commit()
+
+
+def delete_by_id(table: str, row_id: int) -> None:
+    row_id = int(row_id)
+    cursor.execute(f"delete from {table} where id={row_id}")
+    conn.commit()
+
+
+def fetchone(table: str, column_values: Dict) -> List[Tuple]:
+    columns = ', '.join(column_values.keys())
+    cursor.execute(
+        f"SELECT id, {columns} FROM {table} "
+        f"where amount='{column_values['amount']}' "
+        f"AND category_codename='{column_values['category_codename']}' "
+        f"AND user_id='{column_values['user_id']}'"
+    )
+    return cursor.fetchone()
 
 
 def fetchall(table: str, columns: List[str]) -> List[Tuple]:
@@ -53,7 +70,7 @@ def get_cursor():
 
 def _init_db():
     """Инициализирует БД"""
-    with open("createdb.sql", mode="r", encoding="utf-8") as f:
+    with open(os.path.join("models", "createdb.sql"), mode="r", encoding="utf-8") as f:
         sql = f.read()
     cursor.executescript(sql)
     conn.commit()
