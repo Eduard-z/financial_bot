@@ -124,7 +124,8 @@ async def list_expenses(message: types.Message, _logger):
     last_expenses_rows = [
         f"{expense.amount} руб. на {expense.category_name} — нажми "
         f"/del{expense.id} для удаления"
-        for expense in last_expenses]
+        for expense in last_expenses
+    ]
     answer_message = "Последние сохранённые траты:\n\n* " + "\n\n* "\
         .join(last_expenses_rows)
     await message.answer(answer_message)
@@ -143,8 +144,9 @@ async def add_expense(message: types.Message, _logger, amount, product):
         return
     answer_message = (
         f"Добавлены траты {expense.amount} руб на {expense.category_name}.\n\n"
-        f"{expenses.get_today_statistics(message.from_user.id)}")
-    await message.answer(answer_message)
+        f"{expenses.get_today_statistics(message.from_user.id)}"
+    )
+    await message.answer(text=answer_message, reply_markup=keyboard)
 
 
 @router.message(F.text, IsDeleteExpenseFilter())
@@ -161,11 +163,12 @@ async def del_expense(message: types.Message, _logger, amount, product):
     if expense:
         answer_message = (
             f"Удалены траты {expense.amount} руб на {expense.category_name}.\n\n"
-            f"{expenses.get_today_statistics(message.from_user.id)}")
+            f"{expenses.get_today_statistics(message.from_user.id)}"
+        )
     else:
         answer_message = "Expense does not exist"
         _logger.info("Expense does not exist")
-    await message.answer(answer_message)
+    await message.answer(text=answer_message, reply_markup=keyboard)
 
 
 @router.message(F.text, lambda message: message.text.startswith('/del'))
