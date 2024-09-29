@@ -30,7 +30,8 @@ async def help_menu_handler(message: types.Message, _logger):
         "Удалить расход: -12.5 такси\n"
         "Статистика за текущий месяц: /month\n"
         "Последние внесённые расходы: /expenses\n"
-        "Категории трат: /categories",
+        "Категории трат: /categories\n"
+        "Для вызова меню напишите 'Меню'",
         reply_markup=ReplyKeyboardRemove()
     )
 
