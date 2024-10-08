@@ -29,3 +29,9 @@ class IsDeleteExpenseFilter(BaseFilter):
         if search:
             return {"amount": search.group(1), "product": search.group(2)}
         return False
+
+
+class IsTelegramIdFilter(BaseFilter):
+    async def __call__(self, message: Message, _logger) -> bool:
+        _logger.debug('Попали внутрь фильтра %s', __class__.__name__)
+        return message.text.isdigit() and len(message.text) == 9

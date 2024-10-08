@@ -31,6 +31,7 @@ async def help_menu_handler(message: types.Message, _logger):
         "Статистика за текущий месяц: /month\n"
         "Последние внесённые расходы: /expenses\n"
         "Категории трат: /categories\n"
+        "Добавить семейный аккаунт: /family\n"
         "Для вызова меню напишите 'Меню'",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -38,7 +39,7 @@ async def help_menu_handler(message: types.Message, _logger):
 
 @router.message(Command("id"))
 @router.message(F.text == LEXICON_RU["my_id"])
-async def message_handler(message: types.Message, _logger):
+async def send_id_handler(message: types.Message, _logger):
     _logger.info("User asked for their telegram ID")
     _logger.debug(f"telegram ID sent: {message.from_user.id}")
     await message.answer(
@@ -75,4 +76,5 @@ async def not_text_handler(message: types.Message, _logger):
 @router.message()
 async def send_echo(message: types.Message, _logger):
     _logger.info(f"User typed an incorrect command: {message.text}")
+    _logger.debug(message.model_dump_json(indent=4, exclude_none=True))
     await message.answer(f"Это эхо! {message.text}")

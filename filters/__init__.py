@@ -1,1 +1,1 @@
-from .filters import IsDigitCallbackData, IsExpenseFilter, IsDeleteExpenseFilter
+from .filters import IsDigitCallbackData, IsExpenseFilter, IsDeleteExpenseFilter, IsTelegramIdFilter

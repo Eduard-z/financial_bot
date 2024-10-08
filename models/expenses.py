@@ -107,13 +107,21 @@ def get_month_statistics(user_id: int) -> str:
     first_day_of_month = f'{now.year:04d}-{now.month:02d}-01'
     cursor = db.get_cursor()
 
+    family_user_ids = _get_family_accounts_list(user_id)
+    if not family_user_ids:
+        user_ids = "(" + str(user_id) + ")"
+    elif family_user_ids:
+        user_ids = family_user_ids + (user_id,)
+    else:
+        raise Exception(f"Invalid {family_user_ids}")
+
     cursor.execute(f"select sum(amount), category_codename "
                    f"from expense where date(created) >= '{first_day_of_month}' "
-                   f"and user_id='{user_id}' "
+                   f"and user_id in {user_ids} "
                    f"GROUP BY category_codename")
     result = cursor.fetchall()
     month_expenses = [
-        Expense(id=0, user_id=user_id, amount=row[0], category_name=row[1])
+        Expense(id=0, user_id=user_ids[0], amount=row[0], category_name=row[1])
         for row in result
     ]
 
@@ -136,14 +144,22 @@ def get_past_month_statistics(user_id: int) -> str:
         raise Exception("Invalid month")
 
     cursor = db.get_cursor()
+    family_user_ids = _get_family_accounts_list(user_id)
+    if not family_user_ids:
+        user_ids = "(" + str(user_id) + ")"
+    elif family_user_ids:
+        user_ids = family_user_ids + (user_id,)
+    else:
+        raise Exception(f"Invalid {family_user_ids}")
+
     cursor.execute(f"select sum(amount), category_codename "
                    f"from expense where "
                    f"date(created) BETWEEN '{first_day_of_month}' AND '{last_day_of_month}' "
-                   f"and user_id='{user_id}' "
+                   f"and user_id in {user_ids} "
                    f"GROUP BY category_codename")
     result = cursor.fetchall()
     month_expenses = [
-        Expense(id=0, user_id=user_id, amount=row[0], category_name=row[1])
+        Expense(id=0, user_id=user_ids[0], amount=row[0], category_name=row[1])
         for row in result
     ]
 
@@ -194,3 +210,14 @@ def _get_now_datetime() -> datetime.datetime:
 def _get_budget_limit() -> int:
     """Возвращает дневной лимит трат для основных базовых трат"""
     return db.fetchall("budget", ["daily_limit"])[0]["daily_limit"]
+
+
+def _get_family_accounts_list(user_id: int) -> tuple:
+    """Возвращает список семейных аккаунтов"""
+    cursor = db.get_cursor()
+    cursor.execute("select id, family_id "
+                   f"from family_account where user_id='{user_id}'")
+    result = cursor.fetchall()
+
+    all_family_accounts = tuple(row[1] for row in result)
+    return all_family_accounts

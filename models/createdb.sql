@@ -20,6 +20,12 @@ create table expense(
     FOREIGN KEY(category_codename) REFERENCES category(codename)
 );
 
+create table family_account(
+    id integer primary key,
+    user_id integer,
+    family_id integer
+);
+
 insert into category (codename, name, is_base_expense, aliases)
 values
     ("products", "продукты", true, "еда, магазин, магаз"),
@@ -34,7 +40,7 @@ values
     ("beauty", "красота", false, "косметика, ногти, стрижка, маникюр, педикюр"),
     ("health", "здоровье", true, "аптека, лекарства, медицина, анализы"),
     ("household", "хозяйственные расходы", true, "мила, посуда, ремонт"),
-    ("pets", "питомцы", true, "пёс, SAS, зоомагазин, ветклиника"),
+    ("pets", "питомцы", true, "пёс, зоомагазин, ветклиника"),
     ("entertainment", "развлечения", false, "кино, театр"),
     ("reserve", "резерв", true, "отложено"),
     ("other", "прочее", true, "");

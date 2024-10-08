@@ -9,11 +9,12 @@ categories_button = KeyboardButton(text=LEXICON_RU["categories"])
 last_expenses_button = KeyboardButton(text=LEXICON_RU["last_expenses"])
 my_id_button = KeyboardButton(text=LEXICON_RU["my_id"])
 help_button = KeyboardButton(text=LEXICON_RU["help"])
+add_family_account_button = KeyboardButton(text=LEXICON_RU["family"])
 
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [balance_month_button, balance_past_month_button],
-        [last_expenses_button, categories_button]
+        [balance_month_button, balance_past_month_button, last_expenses_button],
+        [categories_button, add_family_account_button]
     ],
     resize_keyboard=True
 )

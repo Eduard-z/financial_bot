@@ -9,6 +9,7 @@ LEXICON_RU: dict[str, str] = {
     "my_id": "Мой айди",
     "help": "🔎 Помощь",
     "del": "❌",
+    "family": "Привязать семейный аккаунт",
     "forward_current_month": '>>',
     "backward_current_month": '<<',
     "forward_past_month": '>>',
