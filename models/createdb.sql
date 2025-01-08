@@ -15,7 +15,7 @@ create table expense(
     user_id integer,
     amount integer,
     created datetime,
-    category_codename integer,
+    category_codename varchar(255),
     raw_text text,
     FOREIGN KEY(category_codename) REFERENCES category(codename)
 );

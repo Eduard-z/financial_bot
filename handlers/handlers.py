@@ -65,48 +65,38 @@ async def today_statistics(message: types.Message, _logger):
 @router.message(F.text == LEXICON_RU["balance_month"])
 @router.message(F.text == LEXICON_RU["balance_past_month"])
 async def month_statistics(message: types.Message, _logger):
+    show_rows = 5
     if message.text in (LEXICON_RU["balance_month"], "/month"):
         """Отправляет статистику трат текущего месяца"""
         _logger.info("User asked for current month expenses list")
         month = "current_month"
-        month_expenses = expenses.get_month_statistics(message.from_user.id)
-        _logger.debug(f"Month expenses: {month_expenses}")
     elif message.text == LEXICON_RU["balance_past_month"]:
         """Отправляет статистику трат прошлого месяца"""
         _logger.info("User asked for past month expenses list")
         month = "past_month"
-        month_expenses = expenses.get_past_month_statistics(message.from_user.id)
-        _logger.debug(f"Past month expenses: {month_expenses}")
     else:
         raise Exception("Wrong command for month statistics")
 
+    month_expenses = _get_month_expenses(message.from_user.id, month, _logger)
     if not month_expenses:
         await message.answer("Расходы ещё не заведены")
         return
 
-    month_expenses_rows = [
-        f"{expense.amount} руб. на {expense.category_name}"
-        for expense in month_expenses]
-
-    show_rows = 5
-    expenses_rows_total = len(month_expenses_rows)
+    expenses_rows_total = len(month_expenses)
     _logger.debug(f"Month expenses total rows: {expenses_rows_total}")
 
     all_month_expenses = sum([expense.amount for expense in month_expenses])
     _logger.debug(f"Month expenses sum: {all_month_expenses}")
 
-    if month_expenses[0].user_id in (message.from_user.id, "("):
-        account_type = "личный аккаунт"
-    elif month_expenses[0].user_id not in (message.from_user.id, "("):
-        account_type = "семейный аккаунт"
-    else:
-        raise Exception(f"Wrong account #{message.from_user.id} type")
+    month_expenses_per_page = _get_month_expenses_per_page(month_expenses, show_rows, 0, _logger)
+    account_type = _get_account_type(message.from_user.id, month_expenses, _logger)
 
     answer_message = "Траты за месяц "\
         f"({account_type}):\nВсего - {all_month_expenses}\n\n* " + "\n\n* "\
-        .join(month_expenses_rows[0:show_rows])
+        .join(month_expenses_per_page)
 
     if expenses_rows_total > show_rows:
+        _logger.info(f"Expenses: in case total rows {expenses_rows_total} > {show_rows}")
         await message.answer(
             text=answer_message,
             reply_markup=create_pagination_keyboard(
@@ -115,8 +105,7 @@ async def month_statistics(message: types.Message, _logger):
             )
         )
     elif expenses_rows_total <= show_rows:
-        show_rows = expenses_rows_total
-
+        _logger.info(f"Expenses: in case total rows {expenses_rows_total} <= {show_rows}")
         await message.answer(
             text=answer_message,
             reply_markup=create_pagination_keyboard(
@@ -156,7 +145,7 @@ async def add_expense(message: types.Message, _logger, amount, product):
         _logger.info(f"{expense} has been added")
     except NotCorrectMessage as e:
         _logger.exception(e)
-        await message.answer(e)
+        await message.answer(e.message)
         return
     answer_message = (
         f"Добавлены траты {expense.amount} руб на {expense.category_name}.\n\n"
@@ -171,10 +160,10 @@ async def del_expense(message: types.Message, _logger, amount, product):
     _logger.info(f"User asked to delete an expense: {amount} for {product}")
     try:
         expense = expenses.delete_expense(amount, product, message.from_user.id)
-        _logger.info(f"{expense} has been deleted")
+        _logger.info(f"Trying to delete {amount} for {product}")
     except Exception as e:
         _logger.exception(e)
-        await message.answer(e)
+        await message.answer(str(e))
         return
     if expense:
         answer_message = (
@@ -182,8 +171,8 @@ async def del_expense(message: types.Message, _logger, amount, product):
             f"{expenses.get_today_statistics(message.from_user.id)}"
         )
     else:
-        answer_message = "Expense does not exist"
-        _logger.info("Expense does not exist")
+        answer_message = "Ошибка: такого расхода не существует"
+        _logger.info(f"Unable to delete: {amount} for {product} does not exist")
     await message.answer(text=answer_message, reply_markup=keyboard)
 
 
@@ -197,7 +186,7 @@ async def del_expense_by_id(message: Message, _logger):
     except ValueError as e:
         _logger.exception(e)
         _logger.info(message.model_dump_json(indent=4, exclude_none=True))
-        await message.answer(text="Impossible to identify the expense")
+        await message.answer(text="Impossible to identify the expense by id")
         return
     else:
         answer_message = expenses.delete_expense_by_id(row_id)
@@ -210,69 +199,55 @@ async def del_expense_by_id(message: Message, _logger):
 @router.callback_query(F.data.in_({"forward_current_month", "forward_past_month"}))
 async def process_forward_press(callback: CallbackQuery, _logger):
     button_pressed = callback.data
-    button_pressed_postfix = callback.data.lstrip("forward")
-
+    button_pressed_postfix = callback.data.lstrip("forward_")
     _logger.info(f"User pressed {button_pressed}")
 
-    if button_pressed == "forward_current_month":
-        month_expenses = expenses.get_month_statistics(callback.from_user.id)
-    elif button_pressed == "forward_past_month":
-        month_expenses = expenses.get_past_month_statistics(callback.from_user.id)
-    else:
-        await callback.answer()
-        _logger.info(callback.model_dump_json(indent=4, exclude_none=True))
-        _logger.exception("Wrong button received")
-    _logger.debug(f"Month expenses: {month_expenses}")
-
+    month_expenses = _get_month_expenses(callback.from_user.id, button_pressed_postfix, _logger)
     if not month_expenses:
         await callback.message.edit_text(text="Расходы ещё не заведены",)
         return
 
-    month_expenses_rows = [
-        f"{expense.amount} руб. на {expense.category_name}"
-        for expense in month_expenses]
-
     show_rows = 5
-    pages_total = len(month_expenses_rows) / show_rows
-    rows_remainder = len(month_expenses_rows) % show_rows
+    pages_total = len(month_expenses) / show_rows
+    _logger.debug(f"Month expenses total pages: {pages_total}")
+
+    rows_remainder = len(month_expenses) % show_rows
+    _logger.debug(f"Month expenses last page remainder: {rows_remainder}")
+
     current_page = int(list(filter(
         lambda x: x.isdigit(), [
             i.text for i in callback.message.reply_markup.inline_keyboard[0]
         ]
     ))[0])
 
-    if month_expenses[0].user_id in (callback.from_user.id, "("):
-        account_type = "личный аккаунт"
-    elif month_expenses[0].user_id not in (callback.from_user.id, "("):
-        account_type = "семейный аккаунт"
-    else:
-        raise Exception(f"Wrong account #{callback.from_user.id} type")
+    month_expenses_per_page = _get_month_expenses_per_page(
+        month_expenses,
+        show_rows,
+        0 + show_rows * current_page,
+        _logger
+    )
+    account_type = _get_account_type(callback.from_user.id, month_expenses, _logger)
 
     answer_message = "Траты за месяц "\
         f"({account_type}):\n\n* " + "\n\n* "\
-        .join(month_expenses_rows[
-            0 + show_rows * current_page:show_rows + show_rows * current_page
-        ])
+        .join(month_expenses_per_page)
 
     if pages_total > (current_page + 1):
-        _logger.info(f"if {pages_total} > {current_page} + 1")
+        _logger.info(f"Expenses: in case total pages {pages_total} > {current_page} + 1")
         await callback.message.edit_text(
             text=answer_message,
             reply_markup=create_pagination_keyboard(
-                f'backward{button_pressed_postfix}',
+                f'backward_{button_pressed_postfix}',
                 f'{current_page + 1}',
-                f'forward{button_pressed_postfix}'
+                f'forward_{button_pressed_postfix}'
             )
         )
     elif pages_total > current_page:
-        _logger.info(f"if {pages_total} > {current_page}")
-
-        if rows_remainder:
-            show_rows = rows_remainder
+        _logger.info(f"Expenses: in case total pages {pages_total} > {current_page}")
         await callback.message.edit_text(
             text=answer_message,
             reply_markup=create_pagination_keyboard(
-                f'backward{button_pressed_postfix}',
+                f'backward_{button_pressed_postfix}',
                 f'{current_page + 1}',
             )
         )
@@ -287,61 +262,46 @@ async def process_forward_press(callback: CallbackQuery, _logger):
 @router.callback_query(F.data.in_({"backward_current_month", "backward_past_month"}))
 async def process_backward_press(callback: CallbackQuery, _logger):
     button_pressed = callback.data
-    button_pressed_postfix = callback.data.lstrip("backward")
-
+    button_pressed_postfix = callback.data.lstrip("backward").lstrip("_")
     _logger.info(f"User pressed {button_pressed}")
 
-    if button_pressed == "backward_current_month":
-        month_expenses = expenses.get_month_statistics(callback.from_user.id)
-    elif button_pressed == "backward_past_month":
-        month_expenses = expenses.get_past_month_statistics(callback.from_user.id)
-    else:
-        await callback.answer()
-        _logger.info(callback.model_dump_json(indent=4, exclude_none=True))
-        _logger.exception("Wrong button received")
-    _logger.debug(f"Month expenses: {month_expenses}")
-
+    month_expenses = _get_month_expenses(callback.from_user.id, button_pressed_postfix, _logger)
     if not month_expenses:
         await callback.message.edit_text(text="Расходы ещё не заведены",)
         return
 
-    month_expenses_rows = [
-        f"{expense.amount} руб. на {expense.category_name}"
-        for expense in month_expenses]
-
     show_rows = 5
     current_page = int(callback.message.reply_markup.inline_keyboard[0][1].text)
 
-    if month_expenses[0].user_id in (callback.from_user.id, "("):
-        account_type = "личный аккаунт"
-    elif month_expenses[0].user_id not in (callback.from_user.id, "("):
-        account_type = "семейный аккаунт"
-    else:
-        raise Exception(f"Wrong account #{callback.from_user.id} type")
+    month_expenses_per_page = _get_month_expenses_per_page(
+        month_expenses,
+        show_rows,
+        0 + show_rows * (current_page - 2),
+        _logger
+    )
+    account_type = _get_account_type(callback.from_user.id, month_expenses, _logger)
 
     answer_message = "Траты за месяц "\
         f"({account_type}):\n\n* " + "\n\n* "\
-        .join(month_expenses_rows[
-            0 + show_rows * (current_page - 2):show_rows + show_rows * (current_page - 2)
-        ])
+        .join(month_expenses_per_page)
 
     if current_page > 2:
-        _logger.info(f"if {current_page} > 2")
+        _logger.info(f"Expenses: in case current page {current_page} > 2")
         await callback.message.edit_text(
             text=answer_message,
             reply_markup=create_pagination_keyboard(
-                f'backward{button_pressed_postfix}',
+                f'backward_{button_pressed_postfix}',
                 f'{current_page - 1}',
-                f'forward{button_pressed_postfix}'
+                f'forward_{button_pressed_postfix}'
             )
         )
     elif current_page > 1:
-        _logger.info(f"if {current_page} > 1")
+        _logger.info(f"Expenses: in case current page {current_page} > 1")
         await callback.message.edit_text(
             text=answer_message,
             reply_markup=create_pagination_keyboard(
                 f'{current_page - 1}',
-                f'forward{button_pressed_postfix}'
+                f'forward_{button_pressed_postfix}'
             )
         )
     else:
@@ -406,7 +366,7 @@ async def del_family_account_by_id(message: Message, state: FSMContext, _logger)
     except ValueError as e:
         _logger.exception(e)
         _logger.info(message.model_dump_json(indent=4, exclude_none=True))
-        await message.answer(text="Impossible to identify the account")
+        await message.answer(text="Impossible to identify the account by id")
         return
     else:
         answer_message = family_accounts\
@@ -442,13 +402,13 @@ async def process_wrong_telegram_id(message: types.Message, state: FSMContext, _
 async def process_telegram_id_sent(message: types.Message, state: FSMContext, _logger):
     _logger.info(f"User {message.from_user.id} entered family telegram ID {message.text}")
     _logger.debug(f"User being in state '{await state.get_state()}'")
-    # Cохраняем введённый telegram ID в хранилище
+    # Сохраняем введённый telegram ID в хранилище
     try:
         family_account = family_accounts.link_family_accounts(message.from_user.id, message.text)
         _logger.info(f"{family_account} has been added")
     except NotCorrectMessage as e:
         _logger.exception(e)
-        await message.answer(e)
+        await message.answer(str(e))
         return
     await message.answer(
         text=f"telegram ID {message.text} добавлен",
@@ -456,3 +416,30 @@ async def process_telegram_id_sent(message: types.Message, state: FSMContext, _l
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
+
+
+def _get_month_expenses(user_id: int, month: str, _logger) -> list[expenses.Expense]:
+    month_expenses = expenses.get_month_statistics(user_id, month)
+    _logger.debug(f"{month} expenses: {month_expenses}")
+    return month_expenses
+
+
+def _get_month_expenses_per_page(month_expenses: list[expenses.Expense],
+                                 limit: int, offset: int, _logger) -> list[str]:
+    month_expenses_rows = [
+        f"{expense.amount} руб. на {expense.category_name}"
+        for expense in month_expenses]
+
+    return month_expenses_rows[offset:(limit + offset)]
+
+
+def _get_account_type(user_id: int, month_expenses: list[expenses.Expense], _logger) -> str:
+    if month_expenses[0].user_id == user_id:
+        account_type = "личный аккаунт"
+    elif month_expenses[0].user_id != user_id:
+        account_type = "семейный аккаунт"
+    else:
+        raise Exception(f"Wrong account #{user_id} type")
+
+    _logger.debug(f"Account type: {account_type} ({month_expenses[0].user_id} vs {user_id})")
+    return account_type

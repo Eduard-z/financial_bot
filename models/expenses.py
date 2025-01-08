@@ -5,13 +5,7 @@ from typing import List, NamedTuple, Optional
 
 from . import db
 from exceptions import NotCorrectMessage
-from .categories import Categories
-
-
-class Message(NamedTuple):
-    """Структура распаршенного сообщения о новом расходе"""
-    amount: float
-    category_text: str
+from .categories import Categories, Category
 
 
 class Expense(NamedTuple):
@@ -25,45 +19,38 @@ class Expense(NamedTuple):
 def add_expense(amount: str, product: str, raw_message: str, user_id: int) -> Expense:
     """Добавляет новое сообщение.
     Принимает на вход сумму и товар."""
-    validated_expense = _validate_amount(amount, product)
-    category = Categories().get_category(
-        validated_expense.category_text)
+    validated_expense = _validate_amount(amount)
+    category = _validate_product(product)
+
     inserted_row_id = db.insert("expense", {
         "user_id": user_id,
-        "amount": validated_expense.amount,
+        "amount": validated_expense,
         "created": _get_now_formatted(),
         "category_codename": category.codename,
         "raw_text": raw_message
     })
     return Expense(id=None,
                    user_id=user_id,
-                   amount=validated_expense.amount,
+                   amount=validated_expense,
                    category_name=category.name)
 
 
-def delete_expense(amount: str, product: str, user_id: int) -> Expense:
+def delete_expense(amount: str, product: str, user_id: int) -> Expense | bool:
     """Удаляет расход.
     Принимает на вход сумму и товар."""
-    validated_expense = _validate_amount(amount, product)
-    category = Categories().get_category(
-        validated_expense.category_text)
-    find_expense = db.fetchone("expense", {
+    validated_expense = _validate_amount(amount)
+    category = _validate_product(product)
+
+    is_deleted = db.delete("expense", {
         "user_id": user_id,
-        "amount": validated_expense.amount,
+        "amount": validated_expense,
         "created": _get_now_formatted(),
         "category_codename": category.codename
     })
-
-    if find_expense:
-        db.delete("expense", {
-            "user_id": user_id,
-            "amount": validated_expense.amount,
-            "created": _get_now_formatted(),
-            "category_codename": category.codename
-        })
+    if is_deleted:
         return Expense(id=None,
-                       user_id=None,
-                       amount=validated_expense.amount,
+                       user_id=user_id,
+                       amount=validated_expense,
                        category_name=category.name)
     else:
         return False
@@ -101,40 +88,17 @@ def get_today_statistics(user_id: int) -> str:
             f"За текущий месяц: /month")
 
 
-def get_month_statistics(user_id: int) -> str:
-    """Возвращает строкой статистику расходов за текущий месяц"""
-    now = _get_now_datetime()
-    first_day_of_month = f'{now.year:04d}-{now.month:02d}-01'
-    cursor = db.get_cursor()
-
-    family_user_ids = _get_family_accounts_list(user_id)
-    if not family_user_ids:
-        user_ids = "(" + str(user_id) + ")"
-    elif family_user_ids:
-        user_ids = family_user_ids + (user_id,)
-    else:
-        raise Exception(f"Invalid {family_user_ids}")
-
-    cursor.execute(f"select sum(amount), category_codename "
-                   f"from expense where date(created) >= '{first_day_of_month}' "
-                   f"and user_id in {user_ids} "
-                   f"GROUP BY category_codename")
-    result = cursor.fetchall()
-    month_expenses = [
-        Expense(id=0, user_id=user_ids[0], amount=row[0], category_name=row[1])
-        for row in result
-    ]
-
-    return month_expenses
-
-
-def get_past_month_statistics(user_id: int) -> str:
-    """Возвращает строкой статистику расходов за прошлый месяц"""
+def get_month_statistics(user_id: int, month: str) -> List[Expense]:
+    """Возвращает строкой статистику расходов за месяц"""
     now = _get_now_datetime()
     current_year = now.year
     current_month = now.month
+    current_day = now.day
 
-    if 1 < current_month <= 12:
+    if month == "current_month":
+        first_day_of_month = f'{current_year:04d}-{current_month:02d}-01'
+        last_day_of_month = f'{current_year:04d}-{current_month:02d}-{current_day:02d}'
+    elif 1 < current_month <= 12:
         first_day_of_month = f'{current_year:04d}-{current_month - 1:02d}-01'
         last_day_of_month = f'{current_year:04d}-{current_month - 1:02d}-31'
     elif current_month == 1:
@@ -146,17 +110,19 @@ def get_past_month_statistics(user_id: int) -> str:
     cursor = db.get_cursor()
     family_user_ids = _get_family_accounts_list(user_id)
     if not family_user_ids:
-        user_ids = "(" + str(user_id) + ")"
+        user_ids = (user_id,)
     elif family_user_ids:
         user_ids = family_user_ids + (user_id,)
     else:
         raise Exception(f"Invalid {family_user_ids}")
 
+    placeholders = ', '.join(['?'] * len(user_ids))
     cursor.execute(f"select sum(amount), category_codename "
                    f"from expense where "
                    f"date(created) BETWEEN '{first_day_of_month}' AND '{last_day_of_month}' "
-                   f"and user_id in {user_ids} "
-                   f"GROUP BY category_codename")
+                   f"and user_id in ({placeholders}) "
+                   f"GROUP BY category_codename",
+                   user_ids)
     result = cursor.fetchall()
     month_expenses = [
         Expense(id=0, user_id=user_ids[0], amount=row[0], category_name=row[1])
@@ -183,16 +149,27 @@ def last(user_id: int) -> List[Expense]:
     return last_expenses
 
 
-def _validate_amount(amount: str, product: str) -> Message:
-    """Поверяет сумму из пришедшего сообщения о новом расходе."""
+def _validate_amount(amount: str) -> float:
+    """Проверяет сумму из пришедшего сообщения о новом расходе."""
     try:
         amount = float(amount.replace(",", "."))
     except TypeError:
         raise NotCorrectMessage(
-            "Не могу понять сообщение. Напишите сообщение в формате, "
+            "Неверная сумма. Напишите сообщение в формате, "
             "например:\n1.8 метро")
 
-    return Message(amount=amount, category_text=product.lower())
+    return amount
+
+
+def _validate_product(product: str) -> Category:
+    """Проверяет товар из пришедшего сообщения о новом расходе."""
+    category = Categories().get_category(product.lower())
+    if not category:
+        raise NotCorrectMessage(
+            "Неверный товар. Напишите сообщение в формате, "
+            "например:\n1.8 метро")
+
+    return category
 
 
 def _get_now_formatted() -> str:
@@ -201,7 +178,7 @@ def _get_now_formatted() -> str:
 
 
 def _get_now_datetime() -> datetime.datetime:
-    """Возвращает сегодняшний datetime с учётом времненной зоны Минск."""
+    """Возвращает сегодняшний datetime с учётом временной зоны Минск."""
     tz = pytz.timezone("Europe/Minsk")
     now = datetime.datetime.now(tz)
     return now

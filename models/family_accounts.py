@@ -11,10 +11,9 @@ class FamilyAccount(NamedTuple):
     family_id: int
 
 
-def link_family_accounts(user_id: str, family_id: str) -> FamilyAccount:
+def link_family_accounts(user_id: int, family_id: str) -> FamilyAccount:
     """Добавляет введённый telegram ID.
     Принимает на вход ID юзера и семейный ID."""
-    user_id = _validate_account(user_id)
     family_id = _validate_account(family_id)
 
     """Сделать 2 записи"""
@@ -55,7 +54,7 @@ def delete_family_account_by_id(row_id: int, user_id: int) -> str:
 
     if result[1] != user_id:
         return "It's not your family account"
-    if isinstance(row_id, int):
+    elif result[1] == user_id:
         db.delete_by_id("family_account", row_id)
         cursor.execute("select id from family_account "
                        f"where user_id='{result[2]}' and family_id='{result[1]}'")

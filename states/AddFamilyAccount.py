@@ -1,7 +1,7 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
-# Cоздаем класс StatesGroup для нашей машины состояний
+# Создаём класс StatesGroup для нашей машины состояний
 class FSMAddFamilyAccount(StatesGroup):
     # Создаем экземпляры класса State, последовательно
     # перечисляя возможные состояния, в которых будет находиться

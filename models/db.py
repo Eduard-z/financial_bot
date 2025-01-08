@@ -20,22 +20,24 @@ def insert(table: str, column_values: Dict):
     conn.commit()
 
 
-def delete(table: str, column_values: Dict):
-    cursor.execute(
-        f"delete from {table} "
-        f"where amount='{column_values['amount']}' "
-        f"AND category_codename='{column_values['category_codename']}' "
-        f"AND user_id='{column_values['user_id']}' "
-        f"AND id in (select id from {table} "
-        f"where amount='{column_values['amount']}' "
-        f"AND category_codename='{column_values['category_codename']}' "
-        "order by id DESC limit 1)"
-    )
-    conn.commit()
+def delete(table: str, column_values: Dict) -> bool:
+
+    if fetchone(table, column_values):
+        cursor.execute(
+            f"delete from {table} "
+            f"where amount='{column_values['amount']}' "
+            f"AND category_codename='{column_values['category_codename']}' "
+            f"AND user_id='{column_values['user_id']}' "
+            f"AND id in (select id from {table} "
+            f"where amount='{column_values['amount']}' "
+            f"AND category_codename='{column_values['category_codename']}' "
+            "order by id DESC limit 1)"
+        )
+        conn.commit()
+        return True
 
 
 def delete_by_id(table: str, row_id: int) -> None:
-    row_id = int(row_id)
     cursor.execute(f"delete from {table} where id={row_id}")
     conn.commit()
 
@@ -51,7 +53,7 @@ def fetchone(table: str, column_values: Dict) -> List[Tuple]:
     return cursor.fetchone()
 
 
-def fetchall(table: str, columns: List[str]) -> List[Tuple]:
+def fetchall(table: str, columns: List[str]) -> List[Dict]:
     columns_joined = ", ".join(columns)
     cursor.execute(f"SELECT {columns_joined} FROM {table}")
     rows = cursor.fetchall()
