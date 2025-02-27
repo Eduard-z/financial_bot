@@ -11,10 +11,10 @@ create table category(
 );
 
 create table expense(
-    id integer primary key,
+    id SERIAL PRIMARY KEY,
     user_id integer,
     amount integer,
-    created datetime,
+    created timestamp,
     category_codename varchar(255),
     raw_text text,
     FOREIGN KEY(category_codename) REFERENCES category(codename)
@@ -28,21 +28,21 @@ create table family_account(
 
 insert into category (codename, name, is_base_expense, aliases)
 values
-    ("products", "продукты", true, "еда, магазин, магаз"),
-    ("beer", "пивко", true, "пиво, пивас, пивасик"),
-    ("alcohol", "алкоголь", false, "алко, алкашка"),
-    ("coffee", "кофе", true, ""),
-    ("cafe", "кафе", true, "ресторан, обед, мак, макдак, пицца"),
-    ("transport", "транспорт", true, "метро, автобус, metro, бензин"),
-    ("taxi", "такси", false, ""),
-    ("komunalka", "коммунальные расходы", false, "коммуналка, аренда, квартира, телефон, интернет, инет"),
-    ("dress", "одежда", false, "одежда, обувь"),
-    ("beauty", "красота", false, "косметика, ногти, стрижка, маникюр, педикюр"),
-    ("health", "здоровье", true, "аптека, лекарства, медицина, анализы"),
-    ("household", "хозяйственные расходы", true, "мила, посуда, ремонт"),
-    ("pets", "питомцы", true, "пёс, зоомагазин, ветклиника"),
-    ("entertainment", "развлечения", false, "кино, театр"),
-    ("reserve", "резерв", true, "отложено"),
-    ("other", "прочее", true, "");
+    ('products', 'продукты', true, 'еда, магазин, магаз'),
+    ('beer', 'пивко', true, 'пиво, пивас, пивасик'),
+    ('alcohol', 'алкоголь', false, 'алко, алкашка'),
+    ('coffee', 'кофе', true, ''),
+    ('cafe', 'кафе', true, 'ресторан, обед, мак, макдак, пицца'),
+    ('transport', 'транспорт', true, 'метро, автобус, metro, бензин'),
+    ('taxi', 'такси', false, ''),
+    ('komunalka', 'коммунальные расходы', false, 'коммуналка, аренда, квартира, телефон, интернет, инет'),
+    ('dress', 'одежда', false, 'одежда, обувь'),
+    ('beauty', 'красота', false, 'косметика, ногти, стрижка, маникюр, педикюр'),
+    ('health', 'здоровье', true, 'аптека, лекарства, медицина, анализы'),
+    ('household', 'хозяйственные расходы', true, 'мила, посуда, ремонт'),
+    ('pets', 'питомцы', true, 'пёс, зоомагазин, ветклиника'),
+    ('entertainment', 'развлечения', false, 'кино, театр'),
+    ('reserve', 'резерв', true, 'отложено'),
+    ('other', 'прочее', true, '');
 
 insert into budget(codename, daily_limit) values ('base', 170);

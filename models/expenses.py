@@ -69,7 +69,7 @@ def get_today_statistics(user_id: int) -> str:
     """Возвращает строкой статистику расходов за сегодня"""
     cursor = db.get_cursor()
     cursor.execute("select sum(amount) "
-                   "from expense where date(created)=date('now', 'localtime') "
+                   "from expense where date(created)=date(current_date) "
                    f"and user_id='{user_id}'")
     result = cursor.fetchone()
     if not result[0]:
@@ -116,7 +116,7 @@ def get_month_statistics(user_id: int, month: str) -> List[Expense]:
     else:
         raise Exception(f"Invalid {family_user_ids}")
 
-    placeholders = ', '.join(['?'] * len(user_ids))
+    placeholders = ', '.join(['%s'] * len(user_ids))
     cursor.execute(f"select sum(amount), category_codename "
                    f"from expense where "
                    f"date(created) BETWEEN '{first_day_of_month}' AND '{last_day_of_month}' "

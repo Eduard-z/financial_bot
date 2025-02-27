@@ -1,0 +1,39 @@
+services:
+
+  postgres:
+    image: postgres:latest
+    container_name: ${DB_HOST}
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      PGPORT: ${DB_PORT}
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:${DB_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username ${DB_USER} --dbname ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+
+  bot:
+    container_name: fin_bot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+
+volumes:
+  db-data:
+    driver: local

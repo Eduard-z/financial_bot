@@ -1,18 +1,34 @@
 import os
+import psycopg2
 from typing import Dict, List, Tuple
 
-import sqlite3
+from config_data.config import Config, load_config
 
 
-conn = sqlite3.connect(os.path.join("db", "finance.db"))
+# Загружаем конфиг в переменную config
+config: Config = load_config()
+
+# conn = sqlite3.connect(os.path.join("db", "finance.db"))
+try:
+    # пытаемся подключиться к базе данных
+    conn = psycopg2.connect(
+        dbname=config.db.database,
+        user=config.db.db_user,
+        password=config.db.db_password,
+        host=config.db.db_host,
+        port=config.db.db_port
+    )
+except Exception as e:
+    # в случае сбоя подключения будет выведено сообщение в STDOUT
+    print(f"Can't establish connection to database: {e}")
 cursor = conn.cursor()
 
 
 def insert(table: str, column_values: Dict):
-    columns = ', '.join(column_values.keys())
-    values = [tuple(column_values.values())]
-    placeholders = ", ".join("?" * len(column_values.keys()))
-    cursor.executemany(
+    columns = ", ".join(column_values.keys())
+    values = tuple(column_values.values())
+    placeholders = ", ".join(['%s'] * len(column_values.keys()))
+    cursor.execute(
         f"INSERT INTO {table} "
         f"({columns}) "
         f"VALUES ({placeholders})",
@@ -74,14 +90,14 @@ def _init_db():
     """Инициализирует БД"""
     with open(os.path.join("models", "createdb.sql"), mode="r", encoding="utf-8") as f:
         sql = f.read()
-    cursor.executescript(sql)
+    cursor.execute(sql)
     conn.commit()
 
 
 def check_db_exists():
     """Проверяет, инициализирована ли БД, если нет — инициализирует"""
-    cursor.execute("SELECT name FROM sqlite_master "
-                   "WHERE type='table' AND name='expense'")
+    cursor.execute("SELECT tablename FROM pg_catalog.pg_tables "
+                   "WHERE schemaname='public' AND tablename='expense'")
     table_exists = cursor.fetchall()
     if table_exists:
         return
