@@ -34,4 +34,4 @@ class IsDeleteExpenseFilter(BaseFilter):
 class IsTelegramIdFilter(BaseFilter):
     async def __call__(self, message: Message, _logger) -> bool:
         _logger.debug('Попали внутрь фильтра %s', __class__.__name__)
-        return message.text.isdigit() and len(message.text) == 9
+        return message.text.isdigit() and 1 < len(message.text) <= 10

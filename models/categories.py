@@ -31,7 +31,7 @@ class Categories:
         Например, категория «кафе» может быть написана как cafe,
         ресторан и тд."""
         categories_result = []
-        for index, category in enumerate(categories):
+        for category in categories:
             aliases = category["aliases"].split(",")
             aliases = list(filter(None, map(str.strip, aliases)))
             aliases.append(category["codename"])

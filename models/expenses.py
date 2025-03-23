@@ -6,6 +6,7 @@ from typing import List, NamedTuple, Optional
 from . import db
 from exceptions import NotCorrectMessage
 from .categories import Categories, Category
+from .family_accounts import get_family_accounts
 
 
 class Expense(NamedTuple):
@@ -16,23 +17,27 @@ class Expense(NamedTuple):
     category_name: str
 
 
-def add_expense(amount: str, product: str, raw_message: str, user_id: int) -> Expense:
+def add_expense(amount: str, product: str, raw_message: str, user_id: int) -> Expense | bool:
     """Добавляет новое сообщение.
     Принимает на вход сумму и товар."""
     validated_expense = _validate_amount(amount)
     category = _validate_product(product)
 
-    inserted_row_id = db.insert("expense", {
+    inserted_row = db.insert("expense", {
         "user_id": user_id,
         "amount": validated_expense,
         "created": _get_now_formatted(),
         "category_codename": category.codename,
         "raw_text": raw_message
     })
-    return Expense(id=None,
-                   user_id=user_id,
-                   amount=validated_expense,
-                   category_name=category.name)
+    if inserted_row:
+        return Expense(id=inserted_row['id'],
+                       user_id=inserted_row['user_id'],
+                       amount=inserted_row['amount'],
+                       category_name=category.name
+        )
+    else:
+        return False
 
 
 def delete_expense(amount: str, product: str, user_id: int) -> Expense | bool:
@@ -41,17 +46,17 @@ def delete_expense(amount: str, product: str, user_id: int) -> Expense | bool:
     validated_expense = _validate_amount(amount)
     category = _validate_product(product)
 
-    is_deleted = db.delete("expense", {
+    deleted_row = db.delete("expense", {
         "user_id": user_id,
         "amount": validated_expense,
-        "created": _get_now_formatted(),
         "category_codename": category.codename
     })
-    if is_deleted:
-        return Expense(id=None,
-                       user_id=user_id,
-                       amount=validated_expense,
-                       category_name=category.name)
+    if deleted_row:
+        return Expense(id=deleted_row['id'],
+                       user_id=deleted_row['user_id'],
+                       amount=deleted_row['amount'],
+                       category_name=category.name
+        )
     else:
         return False
 
@@ -59,22 +64,20 @@ def delete_expense(amount: str, product: str, user_id: int) -> Expense | bool:
 def delete_expense_by_id(row_id: int) -> str:
     """Удаляет расход по его идентификатору"""
     if isinstance(row_id, int):
-        db.delete_by_id("expense", row_id)
-        return f"Expense #{row_id} has been deleted"
+        deleted_row = db.delete_by_id("expense", row_id)
+        if deleted_row:
+            return f"Expense #{deleted_row['id']} has been deleted"
+        else:
+            return f"Expense #{deleted_row['id']} does not exist any more"
     else:
         return "Fail: expense id is not a number"
 
 
 def get_today_statistics(user_id: int) -> str:
     """Возвращает строкой статистику расходов за сегодня"""
-    cursor = db.get_cursor()
-    cursor.execute("select sum(amount) "
-                   "from expense where date(created)=date(current_date) "
-                   f"and user_id='{user_id}'")
-    result = cursor.fetchone()
-    if not result[0]:
+    all_today_expenses = db.calculate_sum_for_today("expense", user_id)
+    if not all_today_expenses:
         return "Сегодня ещё нет расходов"
-    all_today_expenses = result[0]
     # cursor.execute("select sum(amount) "
     #                "from expense where date(created)=date('now', 'localtime') "
     #                f"and user_id='{user_id}' "
@@ -83,7 +86,7 @@ def get_today_statistics(user_id: int) -> str:
     # result = cursor.fetchone()
     # base_today_expenses = result[0] if result[0] else 0
     return (f"Расходы сегодня:\n"
-            f"всего — {all_today_expenses} руб.\n"
+            f"всего — {round(all_today_expenses, 2)} руб.\n"
             # f"базовые — {base_today_expenses} руб. из {_get_budget_limit()} руб.\n\n"
             f"За текущий месяц: /month")
 
@@ -93,22 +96,9 @@ def get_month_statistics(user_id: int, month: str) -> List[Expense]:
     now = _get_now_datetime()
     current_year = now.year
     current_month = now.month
-    current_day = now.day
 
-    if month == "current_month":
-        first_day_of_month = f'{current_year:04d}-{current_month:02d}-01'
-        last_day_of_month = f'{current_year:04d}-{current_month:02d}-{current_day:02d}'
-    elif 1 < current_month <= 12:
-        first_day_of_month = f'{current_year:04d}-{current_month - 1:02d}-01'
-        last_day_of_month = f'{current_year:04d}-{current_month - 1:02d}-31'
-    elif current_month == 1:
-        first_day_of_month = f'{current_year - 1:04d}-{12:02d}-01'
-        last_day_of_month = f'{current_year - 1:04d}-{12:02d}-31'
-    else:
-        raise Exception("Invalid month")
-
-    cursor = db.get_cursor()
-    family_user_ids = _get_family_accounts_list(user_id)
+    all_family_accounts = get_family_accounts(user_id)
+    family_user_ids = tuple(row.family_id for row in all_family_accounts)
     if not family_user_ids:
         user_ids = (user_id,)
     elif family_user_ids:
@@ -116,17 +106,24 @@ def get_month_statistics(user_id: int, month: str) -> List[Expense]:
     else:
         raise Exception(f"Invalid {family_user_ids}")
 
-    placeholders = ', '.join(['%s'] * len(user_ids))
-    cursor.execute(f"select sum(amount), category_codename "
-                   f"from expense where "
-                   f"date(created) BETWEEN '{first_day_of_month}' AND '{last_day_of_month}' "
-                   f"and user_id in ({placeholders}) "
-                   f"GROUP BY category_codename",
-                   user_ids)
-    result = cursor.fetchall()
+    if month == "current_month":
+        all_month_expenses = db.calculate_sum_by_month("expense", current_year, current_month, user_ids)
+    elif 1 < current_month <= 12:
+        reporting_month = current_month - 1
+        all_month_expenses = db.calculate_sum_by_month("expense", current_year, reporting_month, user_ids)
+    elif current_month == 1:
+        reporting_year = current_year - 1
+        all_month_expenses = db.calculate_sum_by_month("expense", reporting_year, 12, user_ids)
+    else:
+        raise Exception("Invalid month")
+
     month_expenses = [
-        Expense(id=0, user_id=user_ids[0], amount=row[0], category_name=row[1])
-        for row in result
+        Expense(id=None,
+                user_id=user_ids[0],
+                amount=round(row['sum'], 2),
+                category_name=_validate_product(row['category_codename']).name
+        )
+        for row in all_month_expenses
     ]
 
     return month_expenses
@@ -134,17 +131,10 @@ def get_month_statistics(user_id: int, month: str) -> List[Expense]:
 
 def last(user_id: int) -> List[Expense]:
     """Возвращает последние несколько расходов"""
-    cursor = db.get_cursor()
-    cursor.execute(
-        "select e.id, e.amount, c.name "
-        "from expense e left join category c "
-        "on c.codename=e.category_codename "
-        f"where user_id='{user_id}' "
-        "order by created desc limit 10")
-    rows = cursor.fetchall()
+    get_last_expenses = db.last_expenses(user_id)
     last_expenses = [
-        Expense(id=row[0], user_id=user_id, amount=row[1], category_name=row[2])
-        for row in rows
+        Expense(id=row['id'], user_id=user_id, amount=row['amount'], category_name=row['name'])
+        for row in get_last_expenses
     ]
     return last_expenses
 
@@ -158,7 +148,7 @@ def _validate_amount(amount: str) -> float:
             "Неверная сумма. Напишите сообщение в формате, "
             "например:\n1.8 метро")
 
-    return amount
+    return round(amount, 2)
 
 
 def _validate_product(product: str) -> Category:
@@ -186,15 +176,5 @@ def _get_now_datetime() -> datetime.datetime:
 
 def _get_budget_limit() -> int:
     """Возвращает дневной лимит трат для основных базовых трат"""
-    return db.fetchall("budget", ["daily_limit"])[0]["daily_limit"]
-
-
-def _get_family_accounts_list(user_id: int) -> tuple:
-    """Возвращает список семейных аккаунтов"""
-    cursor = db.get_cursor()
-    cursor.execute("select id, family_id "
-                   f"from family_account where user_id='{user_id}'")
-    result = cursor.fetchall()
-
-    all_family_accounts = tuple(row[1] for row in result)
-    return all_family_accounts
+    [budget_limit] = db.fetchall("budget", ["daily_limit"])
+    return budget_limit["daily_limit"]

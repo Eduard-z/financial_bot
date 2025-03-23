@@ -3,6 +3,7 @@
 venv/
 virt-env/
 bot_env/
+bot-env/
 
 # Ignore IDE dir
 .idea/
@@ -17,4 +18,5 @@ __pycache__
 # Ignore log files
 *.log
 */*.log
+*/*.log*
 */*/*.log

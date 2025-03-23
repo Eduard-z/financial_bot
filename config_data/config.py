@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class DatabaseConfig:
     database: str         # Название базы данных
     db_host: str          # URL-адрес базы данных
-    db_port: int
+    db_port: int          # 5432 by default
     db_user: str          # Username пользователя базы данных
     db_password: str      # Пароль к базе данных
 
@@ -36,7 +36,7 @@ def load_config() -> Config:
         db=DatabaseConfig(
             database=os.getenv("DB_NAME"),
             db_host=os.getenv("DB_HOST"),
-            db_port=os.getenv("DB_PORT"),
+            db_port=int(os.getenv("DB_PORT")),
             db_user=os.getenv("DB_USER"),
             db_password=os.getenv("DB_PASSWORD")
         )

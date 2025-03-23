@@ -126,6 +126,7 @@ env/
 venv/
 ENV/
 bot_env/
+bot-env/
 env.bak/
 venv.bak/
 

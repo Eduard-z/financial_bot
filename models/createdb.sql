@@ -7,21 +7,21 @@ create table category(
     codename varchar(255) primary key,
     name varchar(255),
     is_base_expense boolean,
-    aliases text
+    aliases varchar(255)
 );
 
 create table expense(
     id SERIAL PRIMARY KEY,
     user_id integer,
-    amount integer,
+    amount float8,
     created timestamp,
     category_codename varchar(255),
-    raw_text text,
+    raw_text varchar(255),
     FOREIGN KEY(category_codename) REFERENCES category(codename)
 );
 
 create table family_account(
-    id integer primary key,
+    id SERIAL PRIMARY KEY,
     user_id integer,
     family_id integer
 );

@@ -142,6 +142,8 @@ async def add_expense(message: types.Message, _logger, amount, product):
     _logger.info(f"User asked to add an expense: {amount} for {product}")
     try:
         expense = expenses.add_expense(amount, product, message.text, message.from_user.id)
+        if not expense:
+            _logger.error(f"Expense {expense} has NOT been added")
         _logger.info(f"{expense} has been added")
     except NotCorrectMessage as e:
         _logger.exception(e)
@@ -160,6 +162,8 @@ async def del_expense(message: types.Message, _logger, amount, product):
     _logger.info(f"User asked to delete an expense: {amount} for {product}")
     try:
         expense = expenses.delete_expense(amount, product, message.from_user.id)
+        if not expense:
+            _logger.error(f"Expense {expense} has NOT been deleted")
         _logger.info(f"Trying to delete {amount} for {product}")
     except Exception as e:
         _logger.exception(e)
@@ -351,11 +355,7 @@ async def process_add_family_command(message: types.Message, state: FSMContext, 
     await state.set_state(FSMAddFamilyAccount.fill_family_account)
 
 
-@router.message(
-    StateFilter(FSMAddFamilyAccount.fill_family_account),
-    F.text,
-    lambda message: message.text.startswith('/unlink')
-)
+@router.message(F.text, lambda message: message.text.startswith('/unlink'))
 async def del_family_account_by_id(message: Message, state: FSMContext, _logger):
     """Удаляет семейный аккаунт по его идентификатору"""
     _logger.info("User asked to delete family account by id")
@@ -411,7 +411,7 @@ async def process_telegram_id_sent(message: types.Message, state: FSMContext, _l
         await message.answer(str(e))
         return
     await message.answer(
-        text=f"telegram ID {message.text} добавлен",
+        text=f"telegram ID {family_account.family_id} добавлен",
         reply_markup=keyboard
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
