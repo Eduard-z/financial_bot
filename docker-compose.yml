@@ -10,7 +10,7 @@ services:
       PGPORT: ${DB_PORT}
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - ./db_data:/var/lib/postgresql/data
     ports:
       - "5432:${DB_PORT}"
     healthcheck:
@@ -31,9 +31,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ${pwd}/artefacts:/home/artefacts
     depends_on:
       - postgres
 
 volumes:
-  db-data:
+  db_data:
     driver: local

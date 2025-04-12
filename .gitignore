@@ -163,3 +163,4 @@ cython_debug/
 
 # DataBase
 *.db
+db_data/
