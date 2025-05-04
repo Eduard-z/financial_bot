@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart
 
 from lexicon import LEXICON_RU
 from middlewares import NonUserThrottlingMiddleware
-from models import User
+from models import insert_table
 
 
 router = Router()
@@ -14,7 +14,7 @@ router.message.middleware(NonUserThrottlingMiddleware())
 async def send_welcome(message: types.Message, _logger):
     _logger.info("User launched the bot")
     try:
-        User.insert_table()
+        insert_table()
         # User.add_user(message.from_user.id)
         answer_message = LEXICON_RU["greet"].format(name=message.from_user.full_name)
     except Exception as e:
