@@ -1,2 +1,3 @@
 from .AllowAdminsOnlyMiddleware import AllowAdminsOnlyMiddleware
+from .AllowUsersOnlyMiddleware import AllowUsersOnlyMiddleware
 from .ThrottlingMiddleware import NonUserThrottlingMiddleware, UserThrottlingMiddleware

@@ -4,7 +4,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 
-from middlewares import AllowAdminsOnlyMiddleware
+from middlewares import AllowUsersOnlyMiddleware
 from keyboards import keyboard, create_pagination_keyboard
 from lexicon import LEXICON_RU
 from filters import (IsDigitCallbackData, IsExpenseFilter,
@@ -14,8 +14,8 @@ from exceptions import NotCorrectMessage
 from models import expenses, Categories, family_accounts
 
 router = Router()
-router.message.middleware(AllowAdminsOnlyMiddleware())
-router.callback_query.middleware(AllowAdminsOnlyMiddleware())
+router.message.middleware(AllowUsersOnlyMiddleware())
+router.callback_query.middleware(AllowUsersOnlyMiddleware())
 
 
 @router.error()
@@ -28,6 +28,23 @@ async def error_handler(event: ErrorEvent, _logger):
 async def menu_handler(message: Message, _logger):
     _logger.info("User asked to display the Menu")
     await message.answer(text=LEXICON_RU["menu"], reply_markup=keyboard)
+
+
+@router.message(Command(commands="help"))
+@router.message(F.text == LEXICON_RU["help"])
+async def help_menu_handler(message: types.Message, _logger):
+    _logger.info("User asked for help")
+    await message.answer(
+        "Бот для учёта финансов\n\n"
+        "Добавить расход: 12.5 такси\n"
+        "Удалить расход: -12.5 такси\n"
+        "Статистика за текущий месяц: /month\n"
+        "Последние внесённые расходы: /expenses\n"
+        "Категории трат: /categories\n"
+        "Добавить семейный аккаунт: /family\n"
+        "Для вызова меню напишите 'Меню'",
+        reply_markup=ReplyKeyboardRemove()
+    )
 
 
 @router.message(Command("categories"))
@@ -416,6 +433,38 @@ async def process_telegram_id_sent(message: types.Message, state: FSMContext, _l
     )
     # Сбрасываем состояние и очищаем данные, полученные внутри состояний
     await state.clear()
+
+
+@router.message(F.text.lower().__eq__("хуй"))
+async def hui_special(message: types.Message, _logger):
+    """Ответ на сообщение"""
+    _logger.info("User typed hui")
+    await message.answer("тебе")
+
+
+@router.message(F.text.lower().__eq__("пизда"))
+async def pizda_special(message: types.Message, _logger):
+    """Ответ на сообщение"""
+    _logger.info("User typed pizda")
+    await message.answer("рулю")
+
+
+# Этот хэндлер будет реагировать на сообщения типа "не текст"
+@router.message(~F.text)
+async def not_text_handler(message: types.Message, _logger):
+    _logger.info(
+        f"User sent not text: {message.model_dump_json(indent=4, exclude_none=True)}"
+    )
+    await message.answer("Я понимаю только текст!")
+
+
+# Этот хэндлер будет реагировать на любые сообщения пользователя,
+# не предусмотренные логикой работы бота
+@router.message()
+async def send_echo(message: types.Message, _logger):
+    _logger.info(f"User typed an incorrect command: {message.text}")
+    _logger.debug(message.model_dump_json(indent=4, exclude_none=True))
+    await message.answer(f"Это эхо! {message.text}")
 
 
 def _get_month_expenses(user_id: int, month: str, _logger) -> list[expenses.Expense]:

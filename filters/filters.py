@@ -3,6 +3,8 @@ import re
 from aiogram.filters import BaseFilter
 from aiogram.types import CallbackQuery, Message
 
+from helpers import is_telegram_id
+
 
 # фильтр будет просто проверять callback_data у объекта CallbackQuery
 # на то, что он состоит из цифр
@@ -34,4 +36,4 @@ class IsDeleteExpenseFilter(BaseFilter):
 class IsTelegramIdFilter(BaseFilter):
     async def __call__(self, message: Message, _logger) -> bool:
         _logger.debug('Попали внутрь фильтра %s', __class__.__name__)
-        return message.text.isdigit() and 1 < len(message.text) <= 10
+        return is_telegram_id(message.text)

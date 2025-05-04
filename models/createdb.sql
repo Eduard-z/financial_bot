@@ -26,6 +26,11 @@ create table family_account(
     family_id integer
 );
 
+create table users(
+    id SERIAL PRIMARY KEY,
+    user_id integer
+);
+
 insert into category (codename, name, is_base_expense, aliases)
 values
     ('products', 'продукты', true, 'еда, магазин, магаз'),

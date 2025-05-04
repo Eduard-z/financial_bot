@@ -6,7 +6,7 @@ from aiogram.types import TelegramObject, User
 from helpers import is_telegram_id
 
 
-class AllowAdminsOnlyMiddleware(BaseMiddleware):
+class AllowUsersOnlyMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
