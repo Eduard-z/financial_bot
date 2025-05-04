@@ -11,7 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.bot import DefaultBotProperties
 
 from config_data.config import Config, load_config
-from handlers import other_handlers, handlers
+from handlers import other_handlers, handlers, start_handler
 from keyboards import set_main_menu
 from middlewares import UserThrottlingMiddleware
 
@@ -44,8 +44,9 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage())
 
     # Регистриуем роутер в диспетчере
-    dp.include_router(handlers.router)
     dp.include_router(other_handlers.router)
+    dp.include_router(start_handler.router)
+    dp.include_router(handlers.router)
 
     # Здесь будем регистрировать миддлвари
     dp.update.outer_middleware(UserThrottlingMiddleware())
