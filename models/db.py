@@ -24,14 +24,6 @@ except Exception as e:
     print(f"Can't establish connection to database: {e}")
 
 
-def insert_table():
-    with conn.cursor() as cursor:
-        cursor.execute(
-            "create table users(id SERIAL PRIMARY KEY, user_id integer);")
-        conn.commit()
-        return "table users created"
-
-
 def insert(table: str, column_values: Dict) -> Dict[str, Any]:
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
         columns = ", ".join(column_values.keys())

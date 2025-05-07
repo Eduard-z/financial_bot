@@ -9,10 +9,6 @@ class User(NamedTuple):
     user_id: int
 
 
-def insert_table():
-    db.insert_table()
-
-
 def add_user(user_id: int) -> User | bool:
     """Добавляет нового юзера"""
     inserted_row = db.insert("users", {
@@ -20,13 +16,12 @@ def add_user(user_id: int) -> User | bool:
     })
     if inserted_row:
         return User(id=inserted_row['id'],
-                    user_id=inserted_row['user_id']
-        )
+                    user_id=inserted_row['user_id'])
     else:
         return False
 
 
-def get_user_ids(user_id: int) -> List[int]:
+def get_user_ids() -> List[int]:
     """Возвращает айди всех юзеров приложения"""
     user_ids = db.fetchall("users", ["user_id"])
 

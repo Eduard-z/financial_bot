@@ -3,10 +3,10 @@ from aiogram.types import ReplyKeyboardRemove
 from aiogram.filters import Command
 
 from lexicon import LEXICON_RU
-from middlewares import AllowAdminsOnlyMiddleware
+from middlewares import AllowUsersOnlyMiddleware
 
 router = Router()
-router.message.middleware(AllowAdminsOnlyMiddleware())
+router.message.middleware(AllowUsersOnlyMiddleware())
 
 
 @router.message(Command("id"))

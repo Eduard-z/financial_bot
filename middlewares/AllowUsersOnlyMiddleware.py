@@ -3,7 +3,7 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, User
 
-from helpers import is_telegram_id
+from models.users import get_user_ids
 
 
 class AllowUsersOnlyMiddleware(BaseMiddleware):
@@ -21,10 +21,12 @@ class AllowUsersOnlyMiddleware(BaseMiddleware):
             __class__.__name__,
             event.__class__.__name__
         )
-        logger.debug(f"Admin IDs: {data.get('_admin_ids')}")
+
+        _user_ids = get_user_ids()
+        logger.debug(f"Users IDs: {_user_ids}")
 
         user: User = data.get('event_from_user')
-        if user and not is_telegram_id(str(user.id)) and user.id not in data.get("_admin_ids"):
+        if user and user.id not in _user_ids:
             return
 
         result = await handler(event, data)

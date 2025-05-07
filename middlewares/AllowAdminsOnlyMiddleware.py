@@ -3,8 +3,6 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, User
 
-from helpers import is_telegram_id
-
 
 class AllowAdminsOnlyMiddleware(BaseMiddleware):
 
@@ -24,7 +22,7 @@ class AllowAdminsOnlyMiddleware(BaseMiddleware):
         logger.debug(f"Admin IDs: {data.get('_admin_ids')}")
 
         user: User = data.get('event_from_user')
-        if user and not is_telegram_id(str(user.id)) and user.id not in data.get("_admin_ids"):
+        if user and user.id not in data.get("_admin_ids"):
             return
 
         result = await handler(event, data)

@@ -25,7 +25,7 @@ class UserThrottlingMiddleware(BaseMiddleware):
         )
 
         user: User = data.get('event_from_user')
-        if user.id in UserThrottlingMiddleware.CACHE:
+        if user and user.id in UserThrottlingMiddleware.CACHE:
             return
 
         UserThrottlingMiddleware.CACHE[user.id] = True
@@ -39,8 +39,8 @@ class UserThrottlingMiddleware(BaseMiddleware):
 
 class NonUserThrottlingMiddleware(BaseMiddleware):
 
-    # Максимальный размер кэша - 1000 ключей, а время жизни ключа - 5 секунд
-    CACHE = TTLCache(maxsize=1000, ttl=5)
+    # Максимальный размер кэша - 1000 ключей, а время жизни ключа - 60 секунд
+    CACHE = TTLCache(maxsize=1000, ttl=60)
 
     async def __call__(
         self,
@@ -57,7 +57,7 @@ class NonUserThrottlingMiddleware(BaseMiddleware):
         )
 
         user: User = data.get('event_from_user')
-        if user.id in NonUserThrottlingMiddleware.CACHE:
+        if user and user.id in NonUserThrottlingMiddleware.CACHE:
             return
 
         NonUserThrottlingMiddleware.CACHE[user.id] = True
